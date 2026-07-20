@@ -1,0 +1,18 @@
+\section{Discussion}\label{sec:discussion}
+
+PLACEHOLDER: Two practical conclusions emerge for operating a solar portfolio under forecast uncertainty.
+
+First, \emph{the temporal structure of error is partly correctable.} The dominant pattern in
+error growth is a diurnal cycle (statistically significant for GHI, RH, U10, and wind direction),
+not monotonic horizon-driven drift. A harmonic bias correction keyed to time of day would remove
+a meaningful component of error without any change to the underlying forecast model. The fixed
+\texttt{06z} initialization limits how cleanly we can separate genuine lead-time growth from the
+diurnal cycle; forecasts from multiple initialization times would be required to fully resolve
+that confound.
+
+Second, \emph{spatial diversification is real but variable-specific and season-specific.}
+Cloud-driven irradiance error---the component that matters most for solar output---decorrelates
+over the shortest distances, so a geographically spread fleet genuinely smooths it, especially in
+summer. Synoptic fields such as surface pressure stay correlated across the entire PJM footprint
+and cannot be diversified away. Any portfolio-level uncertainty model should therefore treat these
+variable classes differently rather than assuming a single fleet-wide correlation.

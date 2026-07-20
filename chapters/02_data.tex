@@ -1,0 +1,54 @@
+\section{Data and Definitions}
+\label{sec:data}
+
+\subsection{Dataset}
+
+All analyses are built from the HRRR forecasts paired with observed
+(``actual'') values for the PJM solar fleet:
+
+\begin{itemize}
+  \item \textbf{Fleet:} all \num{896} solar sites, each tagged with its PJM transmission zone. The nine zones and their site counts are EMAC~(327), DOM~(195),
+        SMAC~(141), West~(71), COMD~(70), APS~(40), ATSI~(24), WMAC~(23), PENE~(5).
+  \item \textbf{Years:} 2022-2024 pooled.
+  \item \textbf{Forecast initialization:} a single daily \texttt{06z} initialization
+        (forecast file \texttt{dec31\_f48\_06z.csv}) with a 48-hour horizon
+        (lead times \SI{1}{hr}--\SI{48}{hr}).
+  \item \textbf{Variables (8):} GHI (\si{W/m^2}), Temperature (\si{\degreeCelsius}),
+        Air Pressure (mbar), Relative Humidity (\si{\percent}), U10 (\si{m/s}), V10 (\si{m/s}),
+        Wind Speed (\si{m/s}), and Wind Direction (deg).
+\end{itemize}
+
+\subsection{Data cleaning}
+
+\begin{itemize}
+  \item \textbf{Wind direction} uses the shortest circular difference, wrapped to
+        $\pm\SI{180}{\degree}$.
+  \item \textbf{Surface pressure} is gated to a valid barometric range ([800, 1100]~mbar) so
+        fill-value outliers do not poison the statistics.
+  \item \textbf{GHI} is correlated on daytime samples only ($\text{actual} > \SI{5}{W/m^2}$) for
+        the spatial work, so the long night-time run of $\approx 0$ error does not manufacture
+        spurious correlation.
+\end{itemize}
+
+\subsection{Error definitions}\label{sec:errordefs}
+
+We use a consistent set of error conventions across every script:
+\begin{itemize}
+  \item \textbf{Raw error} $=$ actual $-$ predicted (a positive value means the forecast
+        \emph{under-predicted}).
+  \item \textbf{Absolute error} $= |\text{actual} - \text{predicted}|$, used for MAE/MAPE.
+\end{itemize}
+
+The skill metrics are the mean absolute error
+$\text{MAE} = \operatorname{mean}(|e|)$, the root-mean-square error
+$\text{RMSE} = \sqrt{\operatorname{mean}(e^2)}$, and the mean absolute percentage error
+$\text{MAPE} = \operatorname{mean}(|e/\text{actual}|)\cdot 100$. For GHI, error is also
+normalized by the global maximum observed GHI (NMAE) to give a scale-free metric.
+
+\subsection{Limitation: lead-time / time-of-day}\label{sec:confound}
+
+Lead time is measured in hours and is defined as far far into the future the model makes the forecast. Because there is only the single \texttt{06z} initialization, \emph{each lead time maps to one
+fixed UTC valid hour}. Lead~12 lands at
+\texttt{18z} (solar noon over the contiguous US); lead~18 lands at \texttt{00z}. As a
+consequence, any axis of ``lead time'' is simultaneously an axis of ``time of day,'' and genuine
+horizon-driven skill loss is entangled with the diurnal cycle. This confound requires further examination of forecast errors across lead times, for example expanding the dataset to have more forecast initialization times.

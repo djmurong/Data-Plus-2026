@@ -1,0 +1,55 @@
+\section{Q1 — Descriptive Statistics }\label{sec:descriptive}
+
+To establish a baseline for forecast performance across the solar sites in PJM zones, we computed comprehensive  statistics for each of the eight core weather variables. The objective of this section is to analyze the variables using the minimum, maximum, mean, median, IQR, and PDF. Forecast errors were evaluated in raw native units. We will utilize KDE graphs to visualize the spread of errors for each variable.
+
+\subsection{Error Distributions With PDF/KDE Curves}
+
+Understanding the distribution of forecast errors is critical for identifying the operational risks of extreme weather prediction errors. We estimated the continuous Probability Density Function (PDF) for each variable via Kernel Density Estimation (KDE) using Scott's bandwidth rule. Datasheet summaries are available for reference at \url{datasheets/master_forecast_summary.csv}.
+
+To track how error distributions evolve across the forecast timeline, the data is stratified into Day 1 (lead times \SI{1}{hr}--\SI{24}{hr}) and Day 2 (lead times \SI{25}{hr}--\SI{48}{hr}). Figures~\ref{fig:kde_ghi} and \ref{fig:kde_temp} display these distributions for our primary solar and thermal drivers.
+
+\subsection{Statistical Evaluation of Variance Stability}
+
+Visual inspection of the continuous error distributions reveals three distinct properties that characterize the behavior of the forecast horizon:
+\begin{enumerate}
+    \item Errors are highly concentrated, symmetric, and exhibit low variability at early lead times (e.g., Lead Hour 01), degrading rapidly over the initial hours.
+    \item By Lead Hour 12, the expanding variability of raw errors begins to stabilize visually, with successive hours adding minor incremental spread.
+    \item On average, Day 2 horizons (hours 25–48) exhibit a visually broader, more variable errors than Day 1 horizons (hours 1–24).
+\end{enumerate}
+
+To formally identify the exact boundary where forecast error spread stops accelerating and transitions into a stabilized uncertainty plateau, we implemented a sequential change-point detection tool utilizing a Cumulative Sum (CUSUM) algorithm. The utilization of a parametric framework to map structural transitions in functional weather profiles follows similar established practices in spatiotemporal atmospheric analysis \citep{wang2022asynchronous}. We treat the hourly error standard deviations ($\sigma_h$) across the entire 48-hour timeline as a continuous sequence. The CUSUM metric maps the cumulative sum of hourly variance deviations from the global horizon mean, isolating structural breaks where the underlying volatility trend undergoes an abrupt directional shift. The empirical metrics captured by this sequential framework are compiled in Table~\ref{tab:cusum_results}.
+
+\begin{table}[H]
+\centering
+\begin{threeparttable}
+\caption{CUSUM Sequential Change-Point Detection for Forecast Error Volatility Horizons.}
+\label{tab:cusum_results}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Variable} & \textbf{Units} & \textbf{Initial STDEV ($\sigma_1$)} & \textbf{Plateau STDEV ($\sigma_{max}$)} & \textbf{Inflection Hour} \\
+\midrule
+GHI               & \si{W/m^2}          & \num{4.7423}   & \num{212.8066} & Lead Hour 31 \\
+Temperature   & \si{\degreeCelsius} & \num{0.3672}   & \num{2.2087}   & Lead Hour 12 \\
+Pressure   & mbar                & \num{0.6208}   & \num{1.5188}   & Lead Hour 25 \\
+Relative Humidity          & \si{\percent}       & \num{3.9085}   & \num{15.7121}  & Lead Hour 13 \\
+U10               & \si{m/s}            & \num{0.8240}   & \num{1.7134}   & Lead Hour 13 \\
+V10               & \si{m/s}            & \num{0.8601}   & \num{1.8048}   & Lead Hour 14 \\
+WindSpeed    & \si{m/s}            & \num{0.7501}   & \num{1.3679}   & Lead Hour 14 \\
+Wind Direction      & Degrees             & \num{36.7609}  & \num{60.6845}  & Lead Hour 17 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\scriptsize
+
+    \item \textit{Note:} $\sigma_1$ denotes the baseline forecast error standard deviation at the initial forecast hour (Lead Hour 01). Lower values indicate exceptional short-range precision, while higher values signify pronounced baseline model noise. $\sigma_{max}$ represents the maximum asymptotic error standard deviation once the degradation of forecast skill reaches its stabilized uncertainty plateau. A low $\sigma_{max}$ indicates a highly constrained error envelope, whereas a high $\sigma_{max}$ reflects substantial cumulative error growth at extended lead times.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+The empirical change-point results reveal a clear non-linear threshold in forecast performance across the fleet, providing rigorous mathematical validation for our core properties:
+
+\begin{enumerate}
+    \item \textbf{Verification of Initial Concentration (Property 1):} Across all fields, initial error standard deviations ($\sigma_1$) are remarkably tight—notably only $\SI{0.3672}{\degreeCelsius}$ for surface temperature and $\SI{4.7423}{W/m^2}$ for GHI. This low baseline variability quantifies the impact of data assimilation at initialization (\texttt{06z}), where the model simulation remains strictly tethered to observational anchors before uncoupling and drifting across the horizon.
+    \item \textbf{Mathematical Proof of the Hour 12 Plateau (Property 2):} The CUSUM framework confirms the visual leveling-off observation. Temperature hits its structural break precisely at Lead Hour 12, while relative humidity ($\sigma_{max} = \num{15.7121}$) and the kinematic wind vectors (\texttt{U10}, \texttt{V10}, and \texttt{WindSpeed\_mps}) follow in a tight sequence between Lead Hours 13 and 14. This indicates that the primary variance growth phase for thermodynamic and boundary-layer fields stops accelerating immediately after solar noon on Day 1, once the daytime convective mixing layer achieves its maximum depth.
+    \item \textbf{Structural Differentiation of Day 2 Variance (Property 3):} Conversely, our primary solar driver, GHI, maps its structural inflection point deep into the timeline at Lead Hour 31. This point aligns precisely with the intense morning production ramp and cloud-burnoff transition (\num{09:00} local solar time) on Day 2. Surface pressure similarly flags its structural break at Lead Hour 25, the exact boundary line of the second forecast day. The emergence of these delayed inflection points proves that Day 2 does not suffer from a progressive, linear skill collapse; rather, it introduces structurally unique, cyclic waves of diurnal volatility that maintain a broader average error envelope than Day 1.
+\end{enumerate}
