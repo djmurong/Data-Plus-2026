@@ -15,18 +15,11 @@ combination of percentile pair (90/10, 95/5, 99/1) and persistence duration
 summed across all five variable/technology combinations defined in Section~\ref{sec:extreme_def}
 ($k_t$, Temperature\_C, and WindSpeed\_mps for the \num{896} solar sites; Temperature\_C and
 WindSpeed\_100m\_mps for the \num{114} wind sites): extreme hours, extreme events, normal-reference
-hours, and normal-reference events. Summed across all five combinations and \num{1010} sites over
-the 30-year baseline, the sweep monitors \num{648053822} variable-hours in total.\footnote{This
-total is smaller than $1010\times30\times8766\times5$ because $k_t$ is defined only for daytime
-hours (solar zenith $<\SI{90}{\degree}$), so its night-time hours are excluded from the monitored
-total rather than contributing zero-anomaly observations.} Raw counts are converted to two derived
-views: hours as a percentage of the variable's own monitored hours, and events per site per year
+hours, and normal-reference events. The sweep sums across all five extreme-variable classifications
+($k_t$, Temperature\_C, and WindSpeed\_mps for solar sites and Temperature\_C and WindSpeed\_100m\_mps for wind sites)
+over the \num{1010} sites and the 30-year baseline, in terms of hours are number of events.
+Raw counts are converted to two derived views: hours as a percentage of the variable's own monitored hours, and events per site per year
 (raw events divided by $\num{1010}\times\num{30}$ site-years).
-
-This sweep is a data-availability check, not the forecast-error comparison itself: the aim is to
-confirm that every candidate configuration retains a sufficient number of extreme-condition
-samples for stable error estimation before any one combination is adopted, and before running the
-full parameter-sensitivity battery of Section~\ref{sec:extreme_limitations} (deferred).
 
 \subsection{Sample-size results across the sweep}
 
