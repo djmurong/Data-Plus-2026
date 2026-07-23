@@ -1,0 +1,214 @@
+\section{Q10 — Extreme-Weather Event Definition}\label{sec:extreme_def}
+
+\subsection{Motivation}
+
+The forecast-error analysis in Sections~\ref{sec:descriptive}--\ref{sec:strata} pools all hours
+together, so a skill metric such as MAE reflects the average behavior of the fleet without
+distinguishing ordinary conditions from operationally stressful ones. Whether HRRR forecast errors
+are worse, better, or unchanged during extreme weather is a distinct question, and answering it
+first requires a definition of ``extreme'' that is reproducible, transferable across the
+\num{896} solar and \num{114} wind sites, and independent of the forecast error it will eventually
+be compared against. A companion literature review of 50 power-systems and forecasting studies
+\citep{murong2026litreview} found that meteorological rarity alone is a limited proxy for
+operational stress---moderately extreme, compound events that simultaneously reduce renewable
+output and raise demand can pose a greater risk to supply adequacy than any single-variable
+extreme \citep{chen2026}---but that the impact-based and forecast-error-based definitions the
+literature otherwise favors require data (a longitudinal loss-of-load record, or the
+forecast-error history this project is still building) that are not yet available. Given that
+constraint, this section adopts a meteorological percentile-threshold definition as the practical
+base layer for identifying candidate extreme periods, deferring the appropriateness question to a
+forecast-error comparison across the resulting regimes (Section~\ref{sec:extreme_sensitivity} and
+subsequent work). The full review, including its PRISMA-ScR search strategy and the corpus behind
+this summary, is available at \url{docs/Literature Review - Defining Extreme Weather.pdf}.
+
+\subsection{Baseline dataset}
+
+\begin{itemize}
+  \item \textbf{Source:} ERA5 hourly single-level reanalysis, obtained from the Copernicus
+        Climate Data Store (CDS) for a bounding box covering every solar and wind site in the
+        project plus a \SI{0.5}{\degree} buffer.
+  \item \textbf{Baseline period:} 1991--2020, the current \SI{30}{yr} climatological standard
+        normal recommended by the World Meteorological Organization \citep{wmo2017}. ERA5's long
+        record (hourly, 1940--present) supplies stable percentiles even after slicing by
+        hour-of-day, which the \num{2022}--\num{2024} HRRR study period alone cannot. The
+        baseline ends before the study period begins, so the reference climate used to flag
+        extremes is independent of the data being classified.
+  \item \textbf{Fleet:} \num{896} solar sites and \num{114} wind sites (\num{1010} total).
+  \item \textbf{Variables extracted:} 2\,m temperature, 2\,m dewpoint (for relative humidity),
+        surface pressure, 10\,m and 100\,m wind components ($u$, $v$), and surface solar
+        radiation downwards.
+\end{itemize}
+
+\subsection{Derived variables}
+
+Site-level hourly series are built by nearest-gridpoint selection and converted to the same
+variable conventions used by the HRRR-based dataset (Section~\ref{sec:errordefs}) so that
+downstream comparisons reuse identical definitions:
+
+\begin{table}[H]
+\centering
+\begin{threeparttable}
+\caption{Derived ERA5 site-series variables.}
+\label{tab:era5_derived_vars}
+\begin{tabular}{llc}
+\toprule
+\textbf{Column} & \textbf{Formula} & \textbf{Technology} \\
+\midrule
+Temperature\_C       & $t2m$ (K) $- 273.15$                         & Solar, Wind \\
+RH\_pct              & Magnus formula from $t2m$, $d2m$              & Solar, Wind \\
+Pressure\_mbar       & $sp$ (Pa) $/ 100$                              & Solar, Wind \\
+GHI                  & $ssrd$ (\si{J/m^2}, hourly-accumulated) $/ 3600 \rightarrow$ \si{W/m^2} & Solar \\
+WindSpeed\_mps       & $\sqrt{u_{10}^2 + v_{10}^2}$                   & Solar (10\,m) \\
+WindSpeed\_100m\_mps & $\sqrt{u_{100}^2 + v_{100}^2}$                 & Wind (100\,m) \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\scriptsize
+    \item \textit{Note:} ERA5 has no native 80\,m level, so 100\,m is used directly as the
+    reference level closest to the HRRR hub-height convention for the wind fleet. ERA5 has no
+    direct RH field, so RH is reconstructed from temperature and dewpoint via the Magnus formula.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\subsection{Deseasonalization}\label{sec:deseasonalization}
+
+A percentile computed on raw meteorology mislabels ordinary diurnal and seasonal states as
+extreme---every summer afternoon becomes a ``temperature extreme,'' every night a ``low-GHI
+extreme.'' \citet{brunnervoigt2024} show that applying a moving window directly to raw data mixes
+the mean seasonal cycle into the extreme threshold, biasing exceedance frequency by as much as
+$-75\%$ in regions with a strong seasonal gradient and weak day-to-day variability. Removing the
+mean cycle first eliminates this bias and permits the wider percentile-pooling window used in
+Section~\ref{sec:threshold_percentile} without penalty.
+
+The mean cycle is the empirical average for each day-of-year $d$ and hour-of-day $h$, taken across
+all $N_y$ baseline years:
+\[
+\bar{x}(d,h) = \frac{1}{N_y}\sum_{y=1}^{N_y} x(y,d,h), \qquad
+x'(t) = x(t) - \bar{x}\big(d(t), h(t)\big).
+\]
+Only the mean cycle is removed; the seasonal variation in \emph{spread} is left in the anomaly
+$x'$. This mean-only correction is treated as a sensitivity question and tested against a
+mean-plus-variance alternative (Section~\ref{sec:extreme_sensitivity}).
+
+\textbf{GHI} is dominated by deterministic solar geometry, so it is replaced by the clear-sky
+index before deseasonalization---the ratio of observed to modeled clear-sky irradiance from the
+Ineichen--Perez model \citep{ineichen2002,marchesoniacland2022}, with night-time hours (solar
+zenith $\ge \SI{90}{\degree}$) excluded:
+\[
+k_t(t) = \frac{\text{GHI}(t)}{\text{GHI}_{\text{clear-sky}}(t)}.
+\]
+This isolates cloud- and aerosol-driven variability---the component relevant to solar
+shortfalls---from the predictable day/night and sun-angle cycle; the mean-cycle removal above is
+then applied to $k_t$ rather than to raw GHI.
+
+\subsection{Percentile threshold and persistence criterion}\label{sec:threshold_percentile}
+
+\textbf{Variable selection.} Of the eight available variables, three carry a clear extreme
+ordering and a direct link to power-system stress and are thresholded directly: GHI (as $k_t$),
+temperature, and wind speed (derived from $U10$/$V10$). Relative humidity and pressure are
+reserved as compound/synoptic-context variables rather than thresholded alone, since RH saturates
+at 100\% and pressure extremes are better described by rate-of-change than by level. $U10$, $V10$,
+and wind direction are excluded as standalone thresholds---a signed component or a circular
+bearing has no scalar extreme ordering on its own.
+
+\textbf{Percentile levels.} Following the calendar-day percentile methodology of
+\citet{zhang2005} with the window correction of \citet{brunnervoigt2024}, the threshold for a
+given $(d,h)$ is the $p$-th percentile of the deseasonalized anomalies pooled from a
+two-dimensional window around that calendar cell---$\pm\SI{15}{days}$ (a 31-day window, circular
+across the year boundary) and $\pm\SI{1}{hr}$ (circular across the day boundary)---across all 30
+baseline years:
+\[
+Q_p(d,h) = \operatorname{percentile}_p\big\{x'(\tau) : \tau \in \mathcal{W}(d,h)\big\}.
+\]
+An observation is flagged extreme when its anomaly falls beyond the relevant tail:
+\[
+E_{\text{high}}(t) = \mathbb{1}\big[x'(t) \ge Q_{90}(d(t),h(t))\big], \qquad
+E_{\text{low}}(t) = \mathbb{1}\big[x'(t) \le Q_{10}(d(t),h(t))\big].
+\]
+The primary levels are the 90th/10th percentiles: this is the balance point in the heat-wave
+literature between events being sufficiently ``extreme'' and sufficiently ``measurable,'' since
+stricter levels combined with a persistence requirement leave too few events to analyze
+\citep{perkinsalexander2013}. The 95th/5th and 99th/1st pairs are carried through as robustness
+checkpoints (Section~\ref{sec:extreme_sensitivity}). Table~\ref{tab:extreme_tails} lists the
+relevant tail(s) and operational rationale per variable.
+
+\begin{table}[H]
+\centering
+\begin{threeparttable}
+\caption{Relevant extremity tail by variable.}
+\label{tab:extreme_tails}
+\begin{tabular}{lll}
+\toprule
+\textbf{Variable} & \textbf{Tail(s) of interest} & \textbf{Operational rationale} \\
+\midrule
+Temperature       & Both ($\ge$90th and $\le$10th) & Heat and cold both drive load extremes and affect generation \\
+Wind speed        & Low ($\le$10th)                & Low wind $\rightarrow$ generation drought / adequacy risk \\
+GHI (as $k_t$)     & Low ($\le$10th)                & Low irradiance $\rightarrow$ solar-generation shortfall \\
+\bottomrule
+\end{tabular}
+\end{threeparttable}
+\end{table}
+
+\textbf{Persistence.} Isolated single-timestep exceedances are not treated as events; the
+threshold must be met for at least $D$ consecutive hours:
+$\text{Event}(t) = \bigwedge_{k=0}^{D-1} E(t-k)$. The tested range is $D \in \{4,8,12,16,20,24\}$
+hours (Section~\ref{sec:extreme_sensitivity}).
+
+\subsection{Normal-reference class}\label{sec:normal_reference}
+
+Comparing forecast error between extreme and normal conditions requires a normal-reference class
+that is not itself confounded with season or background regime. An hour qualifies as
+normal-reference only if it satisfies \emph{both} conditions below, following two independent
+precedents from the literature:
+
+\begin{itemize}
+  \item \textbf{Climatologically central:} the anomaly falls strictly between the pair's own two
+        percentile thresholds (e.g., strictly between $Q_{10}$ and $Q_{90}$ for the 90/10 pair),
+        the percentile-complement approach used in machine-learning forecast evaluation against a
+        deseasonalized climatology \citep{lam2023}. This condition alone already guarantees the
+        hour is not itself part of any qualifying event.
+  \item \textbf{Temporally local:} the hour falls within $\pm\SI{5}{days}$ of the start or end
+        boundary of a qualifying extreme event at that site and variable, mirroring the
+        matched-control design used in heat-wave impact studies, which compare event periods
+        against the days immediately before and after each event \citep{kong2024}. This holds
+        season and slow-varying background conditions approximately fixed, so a later
+        extreme-versus-normal error comparison isolates the effect of extremity rather than of
+        the calendar.
+\end{itemize}
+
+Normal-reference \emph{events} are counted the same way as extreme events: as distinct contiguous
+spans of the resulting normal-reference mask, not as raw hours.
+
+\subsection{Regime-conditioned forecast error (planned)}\label{sec:regime_forecast_error}
+
+Once a site-hour is labeled extreme, normal-reference, or neither, forecast error will be
+evaluated \emph{within} each regime rather than pooled, because error already grows with lead time
+regardless of weather (Section~\ref{sec:leadtime}); pooling all 48 lead times would confound that
+growth with the extreme-versus-normal contrast. Error metrics will therefore be computed per lead
+time or in matched bands (1--6, 7--24, 25--48\,h) and compared across regimes within each band.
+Because extremity is defined purely on observed meteorology, the forecast itself never enters the
+partition---the independent variable (was the weather extreme?) stays distinct from the dependent
+one (how large was the error?). This comparison is the object of future work; the present
+section establishes only the regime definition and confirms it has adequate sample size
+(Section~\ref{sec:extreme_sensitivity}).
+
+\subsection{Limitations}\label{sec:extreme_limitations}
+
+\begin{itemize}
+  \item \textbf{Resolution mismatch.} Thresholds are derived from ERA5 ($\approx\SI{31}{km}$
+        grid spacing) but will be applied to HRRR ($\approx\SI{3}{km}$), so the two distributions
+        can differ, most notably for wind in complex terrain. Thresholds require bias-correction
+        to the HRRR climatology per site using the \num{2022}--\num{2024} overlap before
+        application; this correction has not yet been carried out.
+  \item \textbf{Baseline--study offset.} The 1991--2020 baseline predates the 2022--2024 study
+        period, so extreme-heat events are defined against a marginally cooler climate than the
+        one being evaluated.
+  \item \textbf{Mean-only deseasonalization.} Section~\ref{sec:deseasonalization} removes only the
+        mean seasonal cycle, not its variance; the adequacy of this simplification is tested as a
+        sensitivity variant (mean $+$ variance) rather than assumed.
+  \item \textbf{Deferred comparison.} This section defines the extreme/normal regimes; it does not
+        yet compare HRRR forecast error between them. That comparison, and the full
+        parameter-sensitivity battery beyond the sample-size check in
+        Section~\ref{sec:extreme_sensitivity}, are deferred to future work.
+\end{itemize}
