@@ -21,42 +21,9 @@ over the \num{1010} sites and the 30-year baseline, in terms of hours are number
 Raw counts are converted to two derived views: hours as a percentage of the variable's own monitored hours, and events per site per year
 (raw events divided by $\num{1010}\times\num{30}$ site-years).
 
-\subsection{Sample-size results across the sweep}
+\subsection{Results from the sweep}
 
-Figure~\ref{fig:extreme_hours_heatmap} and Figure~\ref{fig:normal_hours_heatmap} show the raw
-extreme-hour and normal-reference-hour counts across the full grid; the corresponding raw
-\emph{event}-count grids are given in the Appendix (Figures~\ref{fig:app_extreme_events_heatmap}
-and \ref{fig:app_normal_events_heatmap}).
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\textwidth]{figures/Q10_extreme_weather/era5_threshold_sensitivity_hours_heatmap.png}
-  \caption{Extreme-hour counts (summed across all five variable/technology combinations) across
-  the percentile-pair $\times$ persistence-duration sweep. Counts fall smoothly and monotonically
-  with either tightening dimension---from \num{75179527} hours at the loosest cell (90/10,
-  $D=4$\,h) to \num{900860} hours at the strictest (99/1, $D=24$\,h), a factor of
-  $\approx\num{83}$---with no inversion in either direction, a basic sanity check on the
-  persistence run-length logic.}
-  \label{fig:extreme_hours_heatmap}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.8\textwidth]{figures/Q10_extreme_weather/era5_threshold_sensitivity_normal_heatmap.png}
-  \caption{Normal-reference-hour counts across the same sweep. Normal-reference hours substantially
-  outnumber extreme hours at every configuration, which is expected rather than a red flag: the
-  fixed $\pm$5-day matched-control window (Section~\ref{sec:normal_reference}) draws in every
-  climatologically central hour near \emph{any} qualifying event, and those windows overlap
-  heavily once summed across sites and variables. The normal-to-extreme ratio is not constant
-  across the grid---it is $\approx$6:1 at the loosest cell (90/10, $D=4$\,h) but widens to
-  $\approx$19:1 at the strictest percentile pair with the same duration (99/1, $D=4$\,h), because
-  extreme hours collapse faster than normal-reference hours as the percentile pair tightens.}
-  \label{fig:normal_hours_heatmap}
-\end{figure}
-
-The event-rate views in Figure~\ref{fig:events_per_site_heatmap} and
-Figure~\ref{fig:normal_events_per_site_heatmap} translate the same counts into an
-operator-legible unit: distinct events per site per year, rather than raw hours.
+Figures~\ref{fig:events_per_site_heatmap} and~\ref{fig:normal_events_per_site_heatmap} visualize the number of extreme and normal weather events, respectively, on average per year and per site depending on the threshold pairing.
 
 \begin{figure}[H]
   \centering
@@ -75,8 +42,7 @@ operator-legible unit: distinct events per site per year, rather than raw hours.
   \includegraphics[width=0.8\textwidth]{figures/Q10_extreme_weather/era5_threshold_sensitivity_normal_events_per_site_heatmap.png}
   \caption{Normal-reference events per site per year. Because each qualifying extreme event
   contributes up to two $\pm$5-day matched-control windows (one at each boundary), the
-  normal-reference event rate tracks the extreme event rate closely rather than the more
-  divergent hour-count ratio in Figure~\ref{fig:normal_hours_heatmap}.}
+  normal-reference event rate tracks the extreme event rate closely.}
   \label{fig:normal_events_per_site_heatmap}
 \end{figure}
 
@@ -132,31 +98,29 @@ condition---a handful of events per site per year, not one every few days.
 
 At this configuration (99/1, $D=8$\,h):
 \begin{itemize}
-  \item \textbf{Extreme hours:} \num{3103924} (\num{0.479}\% of monitored hours;
-        \num{6.900} events per site per year).
-  \item \textbf{Normal-reference hours:} \num{38857357} (\num{5.996}\% of monitored hours;
-        \num{22.439} events per site per year).
+  \item \textbf{Extreme hours:} \num{0.479}\% of monitored hours,
+        \num{6.900} events per site per year.
+  \item \textbf{Normal-reference hours:} \num{5.996}\% of monitored hours,
+        \num{22.439} events per site per year.
 \end{itemize}
 Both classes are comfortably large enough for stable error estimation once forecast error is
-resolved by lead-time band (Section~\ref{sec:regime_forecast_error}), and the
-$\approx$12.5:1 normal-to-extreme hour ratio at this configuration sits between the extremes shown
-in Figure~\ref{fig:normal_hours_heatmap}.
+resolved by lead-time band (Section~\ref{sec:regime_forecast_error}).
 
 \subsection{Implications and next steps}
 
 This sweep establishes that data availability is not a constraint on the choice of extreme-weather
 definition---every tested configuration, including the strictest, retains enough extreme and
 normal-reference hours for a stable comparison. It does not yet answer whether HRRR forecast error
-actually differs between the two regimes; that comparison, and the remaining
+actually differs between the two regimes. That comparison, and the remaining
 parameter-sensitivity dimensions listed in Section~\ref{sec:extreme_limitations} (calendar-window
 width, diurnal pooling, seasonal-correction form, normal-matching window, and lead-time
-resolution), are the next steps. Concretely: (i) bias-correct the ERA5-derived 99/1 thresholds to
+resolution), are the next steps. Concretely: (i) bias-correct the ERA5-derived 99th/1st percentile thresholds to
 the HRRR climatology per site using the \num{2022}--\num{2024} overlap
 (Section~\ref{sec:extreme_limitations}); (ii) apply the resulting regime labels to the HRRR
 forecast-error dataset used throughout this report, comparing MAE, RMSE, and bias between
 extreme and normal-reference hours within matched lead-time bands; and (iii) re-run the comparison
 across the parameter ranges in Table~\ref{tab:hours_pct}'s companion sensitivity grid to confirm
 that any extreme/normal error contrast found is a property of the data rather than an artifact of
-one parameterization---the minimum robustness standard for a threshold-based definition, since
+one parameterization because the minimum robustness standard for a threshold-based definition, since
 percentile and duration choices are known to materially change the measured relationship to a
 downstream outcome, with no single combination universally optimal \citep{perkinsalexander2013,puvvula2022}.
